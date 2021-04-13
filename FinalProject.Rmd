@@ -12,6 +12,7 @@ library(rattle)
 library(mlr)
 library(glmnet)
 library(pROC)
+library(ggplot2)
 ```
 
 
@@ -59,6 +60,29 @@ NIS_sample <- NIS%>%
 
 NIS_sample$AGE <- as.numeric(NIS_sample$AGE)
 NIS_sample$LOS <- as.numeric(NIS_sample$LOS)
+
+```
+
+```{r Summary Statistics}
+table(Occurence = NIS_sample$DIED, Gender = NIS_sample$FEMALE, useNA = 'ifany')
+
+table(Occurence = NIS_sample$DIED, Elected = NIS_sample$ELECTIVE, useNA = 'ifany')
+
+# ggplot(data = NIS_sample, aes(x = AGE))+
+#   geom_histogram()+
+#   facet_wrap(~DIED, nrow = 2)
+
+NIS_sample <- NIS_sample[complete.cases(NIS_sample),]
+
+ggplot(data = NIS_sample, aes(x = DIED, y = AGE, fill = DIED))+
+  geom_boxplot()+
+  labs(title = 'Age and Outcome', x = 'Outcome', y = 'Age', fill = 'Outcome')+
+  theme_bw()
+
+ggplot(data = NIS_sample%>% filter(DIED == 'Died'), aes(x = AGE, fill = DIED))+
+  geom_histogram(bins = 45)+
+  labs(title = 'Death Frequencies by Age', x = 'Age', y = 'Frequency', fill = 'Outcome')+
+  theme_bw()
 ```
 
 
@@ -195,6 +219,11 @@ NIS_glm <- glm(DIED ~ ., family = 'binomial', data = train)
 summary(NIS_glm)
 ```
 
+```{r}
+DescTools::Conf(NIS_glm)
+```
+
+
 ```{r Train Performance}
 pred_NIS_train <- factor(predict(NIS_glm, newdata = train, type = 'response') > 0.5)
 
@@ -204,11 +233,18 @@ confMatrix_train <- table(true = train$DIED, predicted = pred_NIS_train)
 confMatrix_train
 
 error_train <- (confMatrix_train[1,2] + confMatrix_train[2,1])/nrow(train)
-round(error_train, 2)
+round(error_train, 4)
 ```
 
 ```{r}
-pred_NIS_test <- factor(predict(NIS_glm, newdata = test, type = 'response') > 0.5)
+NIS_glm2 <- glm(DIED ~ ., family = 'binomial', data = test)
+DescTools::Conf(NIS_glm2)
+```
+
+
+
+```{r}
+pred_NIS_test <- factor(predict(NIS_glm, newdata = test, type = 'response')> 0.5) #
 
 levels(pred_NIS_test) <- c('Not Dead', 'Dead')
 
@@ -219,12 +255,125 @@ confMatrix_test
 error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
 print(paste0('Misclassification Error = ', round(error_test, 2)))
 
-sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 2)
+sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 4)
 
-specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 2)
+specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 4)
 print(paste0('Sensitivity = ', sensitivity))
 print(paste0('Specificity = ', specificity))
 ```
+
+```{r}
+predicted_prob_glm <- predict(NIS_glm, newdata = test)
+
+roc_glm <- roc(test$DIED, predicted_prob_glm, ci = TRUE, of = 'auc')
+
+auc(roc_glm)
+ci(roc_glm)
+
+plot(roc_glm, lwd = 4)
+```
+
+### Fixing Logistic Regression Model
+
+```{r}
+NIS_glm_fix <- glm(DIED ~ . -AWEEKEND - TRAN_OUT - ZIPINC_QRTL, family = 'binomial',
+               data = train)
+summary(NIS_glm_fix)
+```
+
+```{r}
+DescTools::Conf(NIS_glm_fix)
+```
+
+```{r Fixed Train Performance}
+pred_NIS_fix_train <- factor(predict(NIS_glm_fix, newdata = train, type = 'response') > 0.5)
+
+levels(pred_NIS_fix_train) <- c('Not Dead', 'Dead')
+confMatrix_train <- table(true = train$DIED, predicted = pred_NIS_fix_train)
+
+confMatrix_train
+
+error_train <- (confMatrix_train[1,2] + confMatrix_train[2,1])/nrow(train)
+round(error_train, 4)
+```
+
+```{r}
+pred_NIS_fix_test <- factor(predict(NIS_glm_fix, newdata = test, type = 'response')> 0.5) #
+
+levels(pred_NIS_fix_test) <- c('Not Dead', 'Dead')
+
+confMatrix_test <- table(true = test$DIED, predicted = pred_NIS_fix_test)
+
+confMatrix_test
+
+error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
+print(paste0('Misclassification Error = ', round(error_test, 4)))
+
+sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 4)
+
+specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 4)
+print(paste0('Sensitivity = ', sensitivity))
+print(paste0('Specificity = ', specificity))
+```
+
+```{r}
+predicted_prob_glm_fix <- predict(NIS_glm_fix, newdata = test)
+
+roc_glm <- roc(test$DIED, predicted_prob_glm_fix, ci = TRUE, of = 'auc')
+
+auc(roc_glm)
+ci(roc_glm)
+
+plot(roc_glm, lwd = 4)
+```
+
+### LASSO Regression
+
+```{r}
+NIS_sample = NIS_sample[complete.cases(NIS_sample), ]
+# 13910 observations with missing values
+
+death_tsk = makeClassifTask(id = "Death Occurence", 
+                                 data = NIS_sample, target = "DIED")
+
+holdout_desc = makeResampleDesc(method='Holdout', stratify = TRUE)
+
+hold = makeResampleInstance(holdout_desc, task = death_tsk, split=0.7)
+
+train = hold$train.inds[[1]]
+test = hold$test.inds[[1]]
+
+lasso_lnr =  makeLearner("classif.cvglmnet", 
+                              fix.factors.prediction = TRUE,
+                              predict.type = "prob",
+                              alpha=1, type.measure='auc')
+# This is logistic regression with the lasso penalty (alpha=1)
+```
+
+```{r}
+death_lasso = train(learner = lasso_lnr, task = death_tsk, subset=train)
+
+auc_lasso = max(death_lasso$learner.model$cvm)
+
+print(auc_lasso)
+
+lambda.min = death_lasso$learner.model$lambda.min
+# extracts the optimal lambda
+```
+
+```{r}
+lasso_lambda.min_lnr = makeLearner("classif.glmnet", lambda=lambda.min,
+                              fix.factors.prediction = TRUE,
+                              predict.type = "prob",
+                              alpha=1)
+# Creates a new learner where lambda is fixed at the optimal value
+
+# death_lasso_final = train(learner = lasso_lambda.min_lnr, task = death_tsk)
+#Takes a really long time
+# trains the lasso model with the optimal lambda on entire data set (test + train)
+```
+
+
 
 
 
