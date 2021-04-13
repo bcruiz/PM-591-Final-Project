@@ -1,0 +1,235 @@
+---
+title: "PM591 - Final Project"
+author: "Brandyn Ruiz"
+date: "4/6/2021"
+output: pdf_document
+---
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(dplyr)
+library(rpart)
+library(rattle)
+library(mlr)
+library(glmnet)
+library(pROC)
+```
+
+
+```{r}
+NIS <- read.csv('NIS2012-200K.csv')
+
+NIS <- NIS%>%
+  select(AGE, AGE_NEONATE, AWEEKEND, AMONTH, APRDRG, APRDRG_Risk_Mortality, APRDRG_Severity,
+         CM_AIDS, CM_ALCOHOL, CM_ANEMDEF, CM_ARTH, CM_BLDLOSS, CM_CHF, CM_CHRNLUNG, CM_COAG,
+         CM_DEPRESS, CM_DM, CM_DMCX, CM_DRUG, CM_HTN_C, CM_HYPOTHY, CM_LIVER,
+         CM_LYMPH, CM_LYTES, CM_METS, CM_NEURO, CM_OBESE, CM_PARA, CM_PERIVASC,
+         CM_PSYCH, CM_PULMCIRC, CM_RENLFAIL, CM_TUMOR, CM_ULCER, CM_VALVE,
+         CM_WGHTLOSS, DIED, DISPUNIFORM, DQTR, DRG, DRG_NoPOA, DRG24, DX1:DX25,
+         DXCCS1:DXCCS25, ELECTIVE, FEMALE, HOSP_DIVISION, HOSPBRTH, KEY_NIS, LOS,
+         NCHRONIC, NDX, NEOMAT, NIS_STRATUM, NPR, ORPROC, PAY1, PL_NCHS2006,
+         PR1:PR15, PRCCS1:PRCCS15, PRDAY1, PRDAY2:PRDAY15, RACE, TRAN_IN, TRAN_OUT,
+         YEAR, ZIPINC_QRTL)
+
+NIS$PL_NCHS2006 <- factor(NIS$PL_NCHS2006)
+NIS$AGE_NEONATE <- factor(NIS$AGE_NEONATE, levels = c(0,1), labels = c('Non-neonatal age', 'Neontal Age'))
+NIS$APRDRG_Risk_Mortality <- factor(NIS$APRDRG_Risk_Mortality, levels = c(0,1,2,3,4), labels = c('Not Specified', 'Minor Likelihood', 'Moderate Likelihood', 'Major Likelihood', 'Extreme Likelihood'))
+NIS$APRDRG_Severity <- factor(NIS$APRDRG_Severity, levels = c(0,1,2,3,4), labels = c('Not Specified', 'Minor Loss', 'Moderate Loss', 'Major Loss', 'Extreme Loss'))
+NIS$DIED <- factor(NIS$DIED, levels = c(0,1), labels = c('Not Dead', 'Died'))
+NIS$DISPUNIFORM <- factor(NIS$DISPUNIFORM)
+NIS$DQTR <- factor(NIS$DQTR)
+NIS$ELECTIVE <- factor(NIS$ELECTIVE, levels = c(1,0), labels = c('Elective', 'Non-elective'))
+NIS$FEMALE <- factor(NIS$FEMALE, levels = c(0,1), labels = c('Male', 'Female'))
+NIS$HOSP_DIVISION <- factor(NIS$HOSP_DIVISION, levels = c(1, 2, 3, 4, 5, 6, 7, 8, 9), labels = c('New England', 'Middle Atlantic', 'East North Central', 'West North Central', 'South Atlantic', 'East South Central', 'West South Central', 'Mountain', 'Pacific'))
+NIS$HOSPBRTH <- factor(NIS$HOSPBRTH, levels = c(0, 1), labels = c('Not hospital birth', 'Hospital Birth'))
+NIS$NEOMAT <- factor(NIS$NEOMAT)
+NIS$ORPROC <- factor(NIS$ORPROC, levels = c(0, 1), labels = c('No Major Operation', 'Major Operation'))
+NIS$PAY1 <- factor(NIS$PAY1, levels = c(1, 2, 3, 4, 5, 6), labels = c('Medicare', 'Medicaid', 'Private', 'Self-pay', 'No charge', 'Other'))
+NIS$RACE <- factor(NIS$RACE, levels = c(1, 2, 3, 4, 5, 6), labels = c('White', 'Black', 'Hispanic', 'Asian', 'Native American', 'Other'))
+NIS$TRAN_IN <- factor(NIS$TRAN_IN, levels = c(0,1,2), labels = c('No Transfer', 'Transferred in Hospital', 'Transferred in Facility'))
+NIS$TRAN_OUT <- factor(NIS$TRAN_OUT, levels = c(0,1,2), labels = c('No Transfer', 'Transfer out Hospital', 'Transfer out Facility'))
+NIS$AWEEKEND <- factor(NIS$AWEEKEND, levels = c(0, 1), labels = c('Weekdays', 'Weekend'))
+NIS$AMONTH <- factor(NIS$AMONTH, levels = c(1:12), labels = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'))
+```
+
+```{r}
+NIS_sample <- NIS%>%
+  select(AGE, AWEEKEND, AMONTH, APRDRG, APRDRG_Risk_Mortality, APRDRG_Severity,
+         ELECTIVE, FEMALE, LOS, ORPROC, PAY1, RACE, TRAN_OUT, TRAN_IN, ZIPINC_QRTL, DIED)
+#AGE_NEONATE
+
+NIS_sample$AGE <- as.numeric(NIS_sample$AGE)
+NIS_sample$LOS <- as.numeric(NIS_sample$LOS)
+```
+
+
+
+```{r}
+# sm_size <- floor(0.70*nrow(NIS_sample))
+# 
+# set.seed(2019)
+# train_ind <- sample(seq_len(nrow(NIS_sample)), size = sm_size)
+# 
+# train <- NIS_sample[train_ind, ]
+# test <- NIS_sample[-train_ind, ]
+```
+
+```{r}
+#NIStree <- rpart(DIED ~ ., data = train, method = 'class', control = list(cp = 0))
+```
+
+```{r}
+# plot(NIStree)
+# # plots the tree
+# 
+# text(NIStree) 
+# # annotates the tree. May fail if tree is too large
+# 
+# fancyRpartPlot(NIStree)
+# # the function fancyRpartPlot in package rattle draws good looking trees!
+```
+
+```{r}
+#plotcp(NIStree)
+```
+
+```{r}
+#printcp(NIStree)
+```
+
+```{r}
+# optimalcp = 0.0044
+# # for you to fill in
+# 
+# NIStreepruned = prune(NIStree, cp=optimalcp)
+```
+
+```{r}
+# plot(NIStreepruned)
+# # plots the tree
+# 
+# text(NIStreepruned) 
+# # annotates the tree. May fail if tree is too large
+# 
+# fancyRpartPlot(NIStreepruned)
+```
+
+```{r}
+# NIS_prune_test_pred <- predict(NIStreepruned, test, type = 'class')
+# 
+# table(predicted = NIS_prune_test_pred, actual = test$DIED)
+# 
+# accuracy = function(actual, predicted) {
+#   mean(actual == predicted)
+# }
+# 
+# 1 - accuracy(test$DIED, NIS_prune_test_pred)
+# # 1 - accuracy gives us the Misclassification Error
+```
+
+##### Logistic Regression Classifier
+(Did not work, sample size is too large for LASSO classification)
+```{r}
+#NIS_sample <- NIS_sample[complete.cases(NIS_sample), ]
+```
+
+```{r}
+# died_tsk = makeClassifTask(id = "Death in Hospital Stay", 
+#                                  data = NIS_sample, target = "DIED")
+# 
+# died_tsk = createDummyFeatures(died_tsk, method="reference")
+# # creates dummies for the categorical variables 
+# 
+# holdout_desc = makeResampleDesc(method='Holdout', stratify = TRUE)
+# 
+# hold = makeResampleInstance(holdout_desc, task = died_tsk, split=0.7)
+# 
+# train = hold$train.inds[[1]]
+# test = hold$test.inds[[1]]
+```
+
+```{r}
+# lasso_lnr =  makeLearner("classif.cvglmnet", 
+#                               fix.factors.prediction = TRUE,
+#                               predict.type = "prob",
+#                               alpha=1, type.measure='auc')
+# This is logistic regression with the lasso penalty (alpha=1)
+```
+
+```{r}
+# died_lasso = train(learner = lasso_lnr, task = died_tsk, subset=train)
+# 
+# auc_lasso = max(recurrence_lasso$learner.model$cvm)
+# 
+# print(auc_lasso)
+# 
+# lambda.min = recurrence_lasso$learner.model$lambda.min
+# extracts the optimal lambda
+```
+
+####
+```{r}
+# lasso_lambda.min_lnr = makeLearner("classif.glmnet", lambda=lambda.min,
+#                               fix.factors.prediction = TRUE,
+#                               predict.type = "prob",
+#                               alpha=1)
+# # Creates a new learner where lambda is fixed at the optimal value
+# 
+# recurrence_lasso_final = train(learner = lasso_lambda.min_lnr, task = recurrence_tsk)
+# trains the lasso model with the optimal lambda on entire data set (test + train)
+```
+
+## Elementary Logisitc Regression
+
+```{r}
+sm_size <- floor(0.70*nrow(NIS_sample))
+
+set.seed(2019)
+train_ind <- sample(seq_len(nrow(NIS_sample)), size = sm_size)
+
+train <- NIS_sample[train_ind, ]
+test <- NIS_sample[-train_ind, ]
+```
+
+```{r}
+NIS_glm <- glm(DIED ~ ., family = 'binomial', data = train)
+summary(NIS_glm)
+```
+
+```{r Train Performance}
+pred_NIS_train <- factor(predict(NIS_glm, newdata = train, type = 'response') > 0.5)
+
+levels(pred_NIS_train) <- c('Not Dead', 'Dead')
+confMatrix_train <- table(true = train$DIED, predicted = pred_NIS_train)
+
+confMatrix_train
+
+error_train <- (confMatrix_train[1,2] + confMatrix_train[2,1])/nrow(train)
+round(error_train, 2)
+```
+
+```{r}
+pred_NIS_test <- factor(predict(NIS_glm, newdata = test, type = 'response') > 0.5)
+
+levels(pred_NIS_test) <- c('Not Dead', 'Dead')
+
+confMatrix_test <- table(true = test$DIED, predicted = pred_NIS_test)
+
+confMatrix_test
+
+error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
+print(paste0('Misclassification Error = ', round(error_test, 2)))
+
+sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 2)
+
+specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 2)
+print(paste0('Sensitivity = ', sensitivity))
+print(paste0('Specificity = ', specificity))
+```
+
+
+
+
+
+
+
+
