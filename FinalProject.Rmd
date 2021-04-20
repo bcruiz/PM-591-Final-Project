@@ -13,6 +13,7 @@ library(mlr)
 library(glmnet)
 library(pROC)
 library(ggplot2)
+library(randomForest)
 ```
 
 
@@ -83,126 +84,18 @@ ggplot(data = NIS_sample%>% filter(DIED == 'Died'), aes(x = AGE, fill = DIED))+
   geom_histogram(bins = 45)+
   labs(title = 'Death Frequencies by Age', x = 'Age', y = 'Frequency', fill = 'Outcome')+
   theme_bw()
+
+table(NIS_sample$DIED)
 ```
 
 
+Would have to make summary statistics for the NIS_simple. Includes variables relevant to admission of patient...
 
-```{r}
-# sm_size <- floor(0.70*nrow(NIS_sample))
-# 
-# set.seed(2019)
-# train_ind <- sample(seq_len(nrow(NIS_sample)), size = sm_size)
-# 
-# train <- NIS_sample[train_ind, ]
-# test <- NIS_sample[-train_ind, ]
-```
 
-```{r}
-#NIStree <- rpart(DIED ~ ., data = train, method = 'class', control = list(cp = 0))
-```
 
-```{r}
-# plot(NIStree)
-# # plots the tree
-# 
-# text(NIStree) 
-# # annotates the tree. May fail if tree is too large
-# 
-# fancyRpartPlot(NIStree)
-# # the function fancyRpartPlot in package rattle draws good looking trees!
-```
 
-```{r}
-#plotcp(NIStree)
-```
 
-```{r}
-#printcp(NIStree)
-```
-
-```{r}
-# optimalcp = 0.0044
-# # for you to fill in
-# 
-# NIStreepruned = prune(NIStree, cp=optimalcp)
-```
-
-```{r}
-# plot(NIStreepruned)
-# # plots the tree
-# 
-# text(NIStreepruned) 
-# # annotates the tree. May fail if tree is too large
-# 
-# fancyRpartPlot(NIStreepruned)
-```
-
-```{r}
-# NIS_prune_test_pred <- predict(NIStreepruned, test, type = 'class')
-# 
-# table(predicted = NIS_prune_test_pred, actual = test$DIED)
-# 
-# accuracy = function(actual, predicted) {
-#   mean(actual == predicted)
-# }
-# 
-# 1 - accuracy(test$DIED, NIS_prune_test_pred)
-# # 1 - accuracy gives us the Misclassification Error
-```
-
-##### Logistic Regression Classifier
-(Did not work, sample size is too large for LASSO classification)
-```{r}
-#NIS_sample <- NIS_sample[complete.cases(NIS_sample), ]
-```
-
-```{r}
-# died_tsk = makeClassifTask(id = "Death in Hospital Stay", 
-#                                  data = NIS_sample, target = "DIED")
-# 
-# died_tsk = createDummyFeatures(died_tsk, method="reference")
-# # creates dummies for the categorical variables 
-# 
-# holdout_desc = makeResampleDesc(method='Holdout', stratify = TRUE)
-# 
-# hold = makeResampleInstance(holdout_desc, task = died_tsk, split=0.7)
-# 
-# train = hold$train.inds[[1]]
-# test = hold$test.inds[[1]]
-```
-
-```{r}
-# lasso_lnr =  makeLearner("classif.cvglmnet", 
-#                               fix.factors.prediction = TRUE,
-#                               predict.type = "prob",
-#                               alpha=1, type.measure='auc')
-# This is logistic regression with the lasso penalty (alpha=1)
-```
-
-```{r}
-# died_lasso = train(learner = lasso_lnr, task = died_tsk, subset=train)
-# 
-# auc_lasso = max(recurrence_lasso$learner.model$cvm)
-# 
-# print(auc_lasso)
-# 
-# lambda.min = recurrence_lasso$learner.model$lambda.min
-# extracts the optimal lambda
-```
-
-####
-```{r}
-# lasso_lambda.min_lnr = makeLearner("classif.glmnet", lambda=lambda.min,
-#                               fix.factors.prediction = TRUE,
-#                               predict.type = "prob",
-#                               alpha=1)
-# # Creates a new learner where lambda is fixed at the optimal value
-# 
-# recurrence_lasso_final = train(learner = lasso_lambda.min_lnr, task = recurrence_tsk)
-# trains the lasso model with the optimal lambda on entire data set (test + train)
-```
-
-## Elementary Logisitc Regression
+## Elementary Logisitc Regression (REFERENCE)
 
 ```{r}
 sm_size <- floor(0.70*nrow(NIS_sample))
@@ -223,7 +116,6 @@ summary(NIS_glm)
 DescTools::Conf(NIS_glm)
 ```
 
-
 ```{r Train Performance}
 pred_NIS_train <- factor(predict(NIS_glm, newdata = train, type = 'response') > 0.5)
 
@@ -241,8 +133,6 @@ NIS_glm2 <- glm(DIED ~ ., family = 'binomial', data = test)
 DescTools::Conf(NIS_glm2)
 ```
 
-
-
 ```{r}
 pred_NIS_test <- factor(predict(NIS_glm, newdata = test, type = 'response')> 0.5) #
 
@@ -253,7 +143,7 @@ confMatrix_test <- table(true = test$DIED, predicted = pred_NIS_test)
 confMatrix_test
 
 error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
-print(paste0('Misclassification Error = ', round(error_test, 2)))
+print(paste0('Misclassification Error = ', round(error_test, 4)))
 
 sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 4)
 
@@ -330,42 +220,42 @@ plot(roc_glm, lwd = 4)
 ### LASSO Regression
 
 ```{r}
-NIS_sample = NIS_sample[complete.cases(NIS_sample), ]
-# 13910 observations with missing values
-
-death_tsk = makeClassifTask(id = "Death Occurence", 
-                                 data = NIS_sample, target = "DIED")
-
-holdout_desc = makeResampleDesc(method='Holdout', stratify = TRUE)
-
-hold = makeResampleInstance(holdout_desc, task = death_tsk, split=0.7)
-
-train = hold$train.inds[[1]]
-test = hold$test.inds[[1]]
-
-lasso_lnr =  makeLearner("classif.cvglmnet", 
-                              fix.factors.prediction = TRUE,
-                              predict.type = "prob",
-                              alpha=1, type.measure='auc')
+# NIS_sample = NIS_sample[complete.cases(NIS_sample), ]
+# # 13910 observations with missing values
+# 
+# death_tsk = makeClassifTask(id = "Death Occurence", 
+#                                  data = NIS_sample, target = "DIED")
+# 
+# holdout_desc = makeResampleDesc(method='Holdout', stratify = TRUE)
+# 
+# hold = makeResampleInstance(holdout_desc, task = death_tsk, split=0.7)
+# 
+# train = hold$train.inds[[1]]
+# test = hold$test.inds[[1]]
+# 
+# lasso_lnr =  makeLearner("classif.cvglmnet", 
+#                               fix.factors.prediction = TRUE,
+#                               predict.type = "prob",
+#                               alpha=1, type.measure='auc')
 # This is logistic regression with the lasso penalty (alpha=1)
 ```
 
 ```{r}
-death_lasso = train(learner = lasso_lnr, task = death_tsk, subset=train)
-
-auc_lasso = max(death_lasso$learner.model$cvm)
-
-print(auc_lasso)
-
-lambda.min = death_lasso$learner.model$lambda.min
+# death_lasso = train(learner = lasso_lnr, task = death_tsk, subset=train)
+# 
+# auc_lasso = max(death_lasso$learner.model$cvm)
+# 
+# print(auc_lasso)
+# 
+# lambda.min = death_lasso$learner.model$lambda.min
 # extracts the optimal lambda
 ```
 
 ```{r}
-lasso_lambda.min_lnr = makeLearner("classif.glmnet", lambda=lambda.min,
-                              fix.factors.prediction = TRUE,
-                              predict.type = "prob",
-                              alpha=1)
+# lasso_lambda.min_lnr = makeLearner("classif.glmnet", lambda=lambda.min,
+#                               fix.factors.prediction = TRUE,
+#                               predict.type = "prob",
+#                               alpha=1)
 # Creates a new learner where lambda is fixed at the optimal value
 
 # death_lasso_final = train(learner = lasso_lambda.min_lnr, task = death_tsk)
@@ -373,7 +263,67 @@ lasso_lambda.min_lnr = makeLearner("classif.glmnet", lambda=lambda.min,
 # trains the lasso model with the optimal lambda on entire data set (test + train)
 ```
 
+### New Data NIS_simple with variables relevant to admission
 
+```{r}
+NIS_simple <- NIS%>%
+  select(c(1, 3:37, 93:98, 104:105, 152:153, 156))
+
+NIS_simple$AGE <- as.numeric(NIS_simple$AGE)
+NIS_simple$LOS <- as.numeric(NIS_simple$LOS)
+
+NIS_simple$CM_AIDS <- factor(NIS_simple$CM_AIDS, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_ALCOHOL <- factor(NIS_simple$CM_ALCOHOL, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_ANEMDEF <- factor(NIS_simple$CM_ANEMDEF, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_ARTH <- factor(NIS_simple$CM_ARTH, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_BLDLOSS <- factor(NIS_simple$CM_BLDLOSS, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_CHF <- factor(NIS_simple$CM_CHF, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_CHRNLUNG <- factor(NIS_simple$CM_CHRNLUNG, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_COAG <- factor(NIS_simple$CM_COAG, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_DEPRESS <- factor(NIS_simple$CM_DEPRESS, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_DM <- factor(NIS_simple$CM_DM, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_DMCX <- factor(NIS_simple$CM_DMCX, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_DRUG <- factor(NIS_simple$CM_DRUG, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_HTN_C <- factor(NIS_simple$CM_HTN_C, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_HYPOTHY <- factor(NIS_simple$CM_HYPOTHY, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_LIVER <- factor(NIS_simple$CM_LIVER, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_LYMPH <- factor(NIS_simple$CM_LYMPH, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_LYTES <- factor(NIS_simple$CM_LYTES, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_METS <- factor(NIS_simple$CM_METS, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_NEURO <- factor(NIS_simple$CM_NEURO, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_OBESE <- factor(NIS_simple$CM_OBESE, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_PARA <- factor(NIS_simple$CM_PARA, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_PERIVASC <- factor(NIS_simple$CM_PERIVASC, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_PSYCH <- factor(NIS_simple$CM_PSYCH, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_PULMCIRC <- factor(NIS_simple$CM_PULMCIRC, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_RENLFAIL <- factor(NIS_simple$CM_RENLFAIL, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_TUMOR <- factor(NIS_simple$CM_TUMOR, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_ULCER <- factor(NIS_simple$CM_ULCER, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_VALVE <- factor(NIS_simple$CM_VALVE, levels = c(0,1), labels = c('No', 'Yes'))
+NIS_simple$CM_WGHTLOSS <- factor(NIS_simple$CM_WGHTLOSS, levels = c(0,1), labels = c('No', 'Yes'))
+```
+
+
+### Balanced Random Forest (consultation)
+```{r}
+sm_size <- floor(0.70*nrow(NIS_simple))
+
+set.seed(2019)
+train_ind <- sample(seq_len(nrow(NIS_simple)), size = sm_size)
+
+train <- NIS_simple[train_ind, ]
+test <- NIS_simple[-train_ind, ]
+```
+
+```{r}
+#check for balanced in lab code
+# NIS_brf <- randomForest(DIED ~ ., data = train,
+#                         mtry = sqrt(47),
+#                         ntree = 500,
+#                         strata = train$DIED,
+#                         sampsize = c(3629, 3629))
+# NIS_brf
+```
 
 
 
