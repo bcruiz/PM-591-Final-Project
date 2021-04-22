@@ -14,6 +14,7 @@ library(glmnet)
 library(pROC)
 library(ggplot2)
 library(randomForest)
+library(tidyverse)
 ```
 
 
@@ -162,6 +163,43 @@ ci(roc_glm)
 
 plot(roc_glm, lwd = 4)
 ```
+
+######## Cutoff point test ########
+```{r}
+test <- coords(roc_glm, input = 'threshold', best.method = 'youden')
+
+# ROC Curve ggplot form
+tibble(
+  Cutoff = test$threshold,
+  SENS = test$sensitivity,
+  SPEC = test$specificity
+) %>%
+  pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
+  ggplot(aes(x = Cutoff, y = value, color = metric)) +
+  geom_point() + 
+  geom_line()
+
+# Tabular form
+tibble(
+  Cutoff = test$threshold,
+  SENS = test$sensitivity,
+  SPEC = test$specificity,
+  SUM = SENS + SPEC
+)%>%
+  arrange(-SUM, -SENS, -SPEC)%>%
+  head(10)
+
+
+
+roc_empirical <- 
+  ROCit::rocit(score = NIS_glm2$fitted.values, class = NIS_glm2$y)
+plot(roc_empirical, YIndex = F)
+summary(roc_empirical)
+#ciAUC(roc_empirical)
+```
+######## ######## ######## ########
+
+
 
 ### Fixing Logistic Regression Model
 
