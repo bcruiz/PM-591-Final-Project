@@ -135,7 +135,7 @@ DescTools::Conf(NIS_glm2)
 ```
 
 ```{r}
-pred_NIS_test <- factor(predict(NIS_glm, newdata = test, type = 'response')> 0.5) #
+pred_NIS_test <- factor(predict(NIS_glm2, newdata = test, type = 'response')> 0.5) #
 
 levels(pred_NIS_test) <- c('Not Dead', 'Dead')
 
@@ -195,7 +195,7 @@ roc_empirical <-
   ROCit::rocit(score = NIS_glm2$fitted.values, class = NIS_glm2$y)
 plot(roc_empirical, YIndex = F)
 summary(roc_empirical)
-#ciAUC(roc_empirical)
+ROCit::ciAUC(roc_empirical)
 ```
 ######## ######## ######## ########
 
@@ -254,6 +254,40 @@ ci(roc_glm)
 
 plot(roc_glm, lwd = 4)
 ```
+
+```{r}
+test <- coords(roc_glm, input = 'threshold', best.method = 'youden')
+
+# ROC Curve ggplot form
+tibble(
+  Cutoff = test$threshold,
+  SENS = test$sensitivity,
+  SPEC = test$specificity
+) %>%
+  pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
+  ggplot(aes(x = Cutoff, y = value, color = metric)) +
+  geom_point() + 
+  geom_line()
+
+# Tabular form
+tibble(
+  Cutoff = test$threshold,
+  SENS = test$sensitivity,
+  SPEC = test$specificity,
+  SUM = SENS + SPEC
+)%>%
+  arrange(-SUM, -SENS, -SPEC)%>%
+  head(10)
+
+
+
+roc_empirical <- 
+  ROCit::rocit(score = NIS_glm_fix$fitted.values, class = NIS_glm_fix$y)
+plot(roc_empirical, YIndex = F)
+summary(roc_empirical)
+ROCit::ciAUC(roc_empirical)
+```
+
 
 ### LASSO Regression
 
@@ -341,9 +375,10 @@ NIS_simple$CM_VALVE <- factor(NIS_simple$CM_VALVE, levels = c(0,1), labels = c('
 NIS_simple$CM_WGHTLOSS <- factor(NIS_simple$CM_WGHTLOSS, levels = c(0,1), labels = c('No', 'Yes'))
 ```
 
-
-### Balanced Random Forest (consultation)
+### Basic Logisitic Regression
 ```{r}
+NIS_simple <- NIS_simple[complete.cases(NIS_simple),]
+
 sm_size <- floor(0.70*nrow(NIS_simple))
 
 set.seed(2019)
@@ -352,6 +387,20 @@ train_ind <- sample(seq_len(nrow(NIS_simple)), size = sm_size)
 train <- NIS_simple[train_ind, ]
 test <- NIS_simple[-train_ind, ]
 ```
+
+```{r}
+# For NIS_simple data
+NIS_glm <- glm(DIED ~ ., family = 'binomial', data = train)
+summary(NIS_glm)
+```
+
+
+
+
+
+
+### Balanced Random Forest (consultation)
+
 
 ```{r}
 #check for balanced in lab code
