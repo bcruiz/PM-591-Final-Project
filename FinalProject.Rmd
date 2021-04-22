@@ -394,8 +394,62 @@ NIS_glm <- glm(DIED ~ ., family = 'binomial', data = train)
 summary(NIS_glm)
 ```
 
+```{r}
+DescTools::Conf(NIS_glm_fix)
+
+```
+
+```{r}
+predicted_prob_glm <- predict(NIS_glm, newdata = train)
+
+roc_glm <- roc(train$DIED, predicted_prob_glm, ci = TRUE, of = 'auc')
+
+auc(roc_glm)
+ci(roc_glm)
 
 
+predicted_prob_glm_test <- predict(NIS_glm, newdata = test)
+roc_test_glm <- roc(test$DIED, predicted_prob_glm_test, ci = TRUE, of = 'auc')
+
+auc(roc_test_glm)
+ci(roc_test_glm)
+
+plot(roc_glm, lwd = 1, col = 'blue')
+plot(roc_test_glm, lwd = 1, col = 'red', add = TRUE)
+```
+
+```{r}
+test <- coords(roc_test_glm, input = 'threshold', best.method = 'youden')
+
+# ROC Curve ggplot form
+tibble(
+  Cutoff = test$threshold,
+  SENS = test$sensitivity,
+  SPEC = test$specificity
+) %>%
+  pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
+  ggplot(aes(x = Cutoff, y = value, color = metric)) +
+  geom_point() + 
+  geom_line()
+
+# Tabular form
+tibble(
+  Cutoff = test$threshold,
+  SENS = test$sensitivity,
+  SPEC = test$specificity,
+  SUM = SENS + SPEC
+)%>%
+  arrange(-SUM, -SENS, -SPEC)%>%
+  head(10)
+
+
+
+roc_empirical <- 
+  ROCit::rocit(score = NIS_glm$fitted.values, class = NIS_glm$y)
+plot(roc_empirical, YIndex = F)
+summary(roc_empirical)
+ROCit::ciAUC(roc_empirical)
+```
 
 
 
