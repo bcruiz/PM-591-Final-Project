@@ -451,20 +451,95 @@ summary(roc_empirical)
 ROCit::ciAUC(roc_empirical)
 ```
 
-
-
-### Balanced Random Forest (consultation)
-
+### Random Forest (consultation)
+```{r}
+NIS_rf <- randomForest(DIED ~ ., data = NIS_simple[train, ],
+                       mtry = sqrt(47),
+                       ntree = 500,
+                       strata = NIS_simple$DIED[train])
+NIS_rf
+```
 
 ```{r}
-#check for balanced in lab code
-# NIS_brf <- randomForest(DIED ~ ., data = train,
-#                         mtry = sqrt(47),
-#                         ntree = 500,
-#                         strata = train$DIED,
-#                         sampsize = c(3629, 3629))
-# NIS_brf
+varImpPlot(NIS_rf, cex = 0.7, pt.cex = 1.2, n.var = 20, pch = 16,
+           main = 'Variable Importance')
 ```
+
+```{r warning=FALSE, message=FALSE}
+roc_train <- roc(NIS_simple$DIED[train], NIS_rf$votes[,1])
+
+NIS_predict_test <- predict(NIS_rf, newdata = NIS_simple[test,],
+                            type = 'prob')
+head(NIS_predict_test, 4)
+
+roc_test <- roc(NIS_simple$DIED[test], NIS_predict_test[,1])
+
+auc(roc_train)
+ci.auc(roc_train)
+auc(roc_test)
+ci.auc(roc_test)
+
+plot(roc_train)
+plot(roc_test, col = 'red', add =TRUE)
+legend(0,0.4, legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1:1, cex = 0.8)
+```
+
+### Balanced Random Forest (Even Better)
+
+```{r}
+NIS_tsk <- makeClassifTask(id = "Mortality within hospital",
+                           data = NIS_simple, target = 'DIED')
+
+split_desc <- makeResampleDesc(method = 'Holdout', stratify = TRUE, split = 0.7)
+
+set.seed(2019)
+
+split <- makeResampleInstance(split_desc, task = NIS_tsk)
+
+train <- split$train.inds[[1]]
+test <- split$test.inds[[1]]
+table(NIS_simple$DIED[train])
+```
+
+```{r}
+NIS_brf <- randomForest(DIED ~ ., data = NIS_simple[train, ],
+                       mtry = sqrt(47),
+                       ntree = 500,
+                       strata = NIS_simple$DIED[train],
+                       sampsize = c(2359, 2359))
+NIS_brf
+```
+
+```{r}
+varImpPlot(NIS_brf, cex = 0.7, pt.cex = 1.2, n.var = 20, pch = 16,
+           main = 'Variable Importance')
+```
+
+```{r warning=FALSE, message=FALSE}
+roc_train <- roc(NIS_simple$DIED[train], NIS_brf$votes[,1])
+
+NIS_predict_test <- predict(NIS_brf, newdata = NIS_simple[test,],
+                            type = 'prob')
+head(NIS_predict_test, 4)
+
+roc_test <- roc(NIS_simple$DIED[test], NIS_predict_test[,1])
+
+auc(roc_train)
+ci.auc(roc_train)
+auc(roc_test)
+ci.auc(roc_test)
+
+plot(roc_train)
+plot(roc_test, col = 'red', add =TRUE)
+legend(0,0.4, legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1:1, cex = 0.8)
+
+```
+
+
+
+
+
+
 
 
 
