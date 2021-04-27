@@ -19,7 +19,7 @@ library(gbm)
 ```
 
 
-```{r}
+```{r echo=FALSE}
 NIS <- read.csv('NIS2012-200K.csv')
 
 NIS <- NIS%>%
@@ -55,290 +55,232 @@ NIS$AWEEKEND <- factor(NIS$AWEEKEND, levels = c(0, 1), labels = c('Weekdays', 'W
 NIS$AMONTH <- factor(NIS$AMONTH, levels = c(1:12), labels = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'))
 ```
 
-```{r}
-NIS_sample <- NIS%>%
-  select(AGE, AWEEKEND, AMONTH, APRDRG, APRDRG_Risk_Mortality, APRDRG_Severity,
-         ELECTIVE, FEMALE, LOS, ORPROC, PAY1, RACE, TRAN_OUT, TRAN_IN, ZIPINC_QRTL, DIED)
-#AGE_NEONATE
-
-NIS_sample$AGE <- as.numeric(NIS_sample$AGE)
-NIS_sample$LOS <- as.numeric(NIS_sample$LOS)
-
+```{r echo=FALSE}
+# NIS_sample <- NIS%>%
+#   select(AGE, AWEEKEND, AMONTH, APRDRG, APRDRG_Risk_Mortality, APRDRG_Severity,
+#          ELECTIVE, FEMALE, LOS, ORPROC, PAY1, RACE, TRAN_OUT, TRAN_IN, ZIPINC_QRTL, DIED)
+# #AGE_NEONATE
+# 
+# NIS_sample$AGE <- as.numeric(NIS_sample$AGE)
+# NIS_sample$LOS <- as.numeric(NIS_sample$LOS)
 ```
 
-```{r Summary Statistics}
-table(Occurence = NIS_sample$DIED, Gender = NIS_sample$FEMALE, useNA = 'ifany')
-
-table(Occurence = NIS_sample$DIED, Elected = NIS_sample$ELECTIVE, useNA = 'ifany')
-
-# ggplot(data = NIS_sample, aes(x = AGE))+
-#   geom_histogram()+
-#   facet_wrap(~DIED, nrow = 2)
-
-NIS_sample <- NIS_sample[complete.cases(NIS_sample),]
-
-ggplot(data = NIS_sample, aes(x = DIED, y = AGE, fill = DIED))+
-  geom_boxplot()+
-  labs(title = 'Age and Outcome', x = 'Outcome', y = 'Age', fill = 'Outcome')+
-  theme_bw()
-
-ggplot(data = NIS_sample%>% filter(DIED == 'Died'), aes(x = AGE, fill = DIED))+
-  geom_histogram(bins = 45)+
-  labs(title = 'Death Frequencies by Age', x = 'Age', y = 'Frequency', fill = 'Outcome')+
-  theme_bw()
-
-table(NIS_sample$DIED)
+```{r Summary Statistics, echo=FALSE}
+# table(Occurence = NIS_sample$DIED, Gender = NIS_sample$FEMALE, useNA = 'ifany')
+# 
+# table(Occurence = NIS_sample$DIED, Elected = NIS_sample$ELECTIVE, useNA = 'ifany')
+# 
+# NIS_sample <- NIS_sample[complete.cases(NIS_sample),]
+# 
+# ggplot(data = NIS_sample, aes(x = DIED, y = AGE, fill = DIED))+
+#   geom_boxplot()+
+#   labs(title = 'Age and Outcome', x = 'Outcome', y = 'Age', fill = 'Outcome')+
+#   theme_bw()
+# 
+# ggplot(data = NIS_sample%>% filter(DIED == 'Died'), aes(x = AGE, fill = DIED))+
+#   geom_histogram(bins = 45)+
+#   labs(title = 'Death Frequencies by Age', x = 'Age', y = 'Frequency', fill = 'Outcome')+
+#   theme_bw()
+# 
+# table(NIS_sample$DIED)
 ```
 
+## !Elementary Logisitc Regression (REFERENCE)
 
-Would have to make summary statistics for the NIS_simple. Includes variables relevant to admission of patient...
-
-
-
-
-
-## Elementary Logisitc Regression (REFERENCE)
-
-```{r}
-sm_size <- floor(0.70*nrow(NIS_sample))
-
-set.seed(2019)
-train_ind <- sample(seq_len(nrow(NIS_sample)), size = sm_size)
-
-train <- NIS_sample[train_ind, ]
-test <- NIS_sample[-train_ind, ]
+```{r, echo=FALSE}
+# sm_size <- floor(0.70*nrow(NIS_sample))
+# 
+# set.seed(2019)
+# train_ind <- sample(seq_len(nrow(NIS_sample)), size = sm_size)
+# 
+# train <- NIS_sample[train_ind, ]
+# test <- NIS_sample[-train_ind, ]
 ```
 
-```{r}
-NIS_glm <- glm(DIED ~ ., family = 'binomial', data = train)
-summary(NIS_glm)
+```{r, echo=FALSE}
+# NIS_glm <- glm(DIED ~ ., family = 'binomial', data = train)
+# summary(NIS_glm)
 ```
 
-```{r}
-DescTools::Conf(NIS_glm)
+```{r, echo=FALSE}
+#DescTools::Conf(NIS_glm)
 ```
 
-```{r Train Performance}
-pred_NIS_train <- factor(predict(NIS_glm, newdata = train, type = 'response') > 0.5)
-
-levels(pred_NIS_train) <- c('Not Dead', 'Dead')
-confMatrix_train <- table(true = train$DIED, predicted = pred_NIS_train)
-
-confMatrix_train
-
-error_train <- (confMatrix_train[1,2] + confMatrix_train[2,1])/nrow(train)
-round(error_train, 4)
+```{r Train Performance, echo=FALSE}
+# pred_NIS_train <- factor(predict(NIS_glm, newdata = train, type = 'response') > 0.5)
+# 
+# levels(pred_NIS_train) <- c('Not Dead', 'Dead')
+# confMatrix_train <- table(true = train$DIED, predicted = pred_NIS_train)
+# 
+# confMatrix_train
+# 
+# error_train <- (confMatrix_train[1,2] + confMatrix_train[2,1])/nrow(train)
+# round(error_train, 4)
 ```
 
-```{r}
-NIS_glm2 <- glm(DIED ~ ., family = 'binomial', data = test)
-DescTools::Conf(NIS_glm2)
+```{r, echo=FALSE}
+# NIS_glm2 <- glm(DIED ~ ., family = 'binomial', data = test)
+# DescTools::Conf(NIS_glm2)
 ```
 
-```{r}
-pred_NIS_test <- factor(predict(NIS_glm2, newdata = test, type = 'response')> 0.5) #
-
-levels(pred_NIS_test) <- c('Not Dead', 'Dead')
-
-confMatrix_test <- table(true = test$DIED, predicted = pred_NIS_test)
-
-confMatrix_test
-
-error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
-print(paste0('Misclassification Error = ', round(error_test, 4)))
-
-sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 4)
-
-specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 4)
-print(paste0('Sensitivity = ', sensitivity))
-print(paste0('Specificity = ', specificity))
+```{r, echo=FALSE}
+# pred_NIS_test <- factor(predict(NIS_glm2, newdata = test, type = 'response')> 0.5) #
+# 
+# levels(pred_NIS_test) <- c('Not Dead', 'Dead')
+# 
+# confMatrix_test <- table(true = test$DIED, predicted = pred_NIS_test)
+# 
+# confMatrix_test
+# 
+# error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
+# print(paste0('Misclassification Error = ', round(error_test, 4)))
+# 
+# sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 4)
+# 
+# specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 4)
+# print(paste0('Sensitivity = ', sensitivity))
+# print(paste0('Specificity = ', specificity))
 ```
 
-```{r}
-predicted_prob_glm <- predict(NIS_glm, newdata = test)
-
-roc_glm <- roc(test$DIED, predicted_prob_glm, ci = TRUE, of = 'auc')
-
-auc(roc_glm)
-ci(roc_glm)
-
-plot(roc_glm, lwd = 4)
+```{r, echo=FALSE}
+# predicted_prob_glm <- predict(NIS_glm, newdata = test)
+# 
+# roc_glm <- roc(test$DIED, predicted_prob_glm, ci = TRUE, of = 'auc')
+# 
+# auc(roc_glm)
+# ci(roc_glm)
+# 
+# plot(roc_glm, lwd = 4)
 ```
 
+```{r, echo=FALSE}
 ######## Cutoff point test ########
-```{r}
-test <- coords(roc_glm, input = 'threshold', best.method = 'youden')
 
-# ROC Curve ggplot form
-tibble(
-  Cutoff = test$threshold,
-  SENS = test$sensitivity,
-  SPEC = test$specificity
-) %>%
-  pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
-  ggplot(aes(x = Cutoff, y = value, color = metric)) +
-  geom_point() + 
-  geom_line()
-
-# Tabular form
-tibble(
-  Cutoff = test$threshold,
-  SENS = test$sensitivity,
-  SPEC = test$specificity,
-  SUM = SENS + SPEC
-)%>%
-  arrange(-SUM, -SENS, -SPEC)%>%
-  head(10)
-
-
-
-roc_empirical <- 
-  ROCit::rocit(score = NIS_glm2$fitted.values, class = NIS_glm2$y)
-plot(roc_empirical, YIndex = F)
-summary(roc_empirical)
-ROCit::ciAUC(roc_empirical)
-```
-######## ######## ######## ########
-
-
-
-### Fixing Logistic Regression Model
-
-```{r}
-NIS_glm_fix <- glm(DIED ~ . -AWEEKEND - TRAN_OUT - ZIPINC_QRTL, family = 'binomial',
-               data = train)
-summary(NIS_glm_fix)
-```
-
-```{r}
-DescTools::Conf(NIS_glm_fix)
-```
-
-```{r Fixed Train Performance}
-pred_NIS_fix_train <- factor(predict(NIS_glm_fix, newdata = train, type = 'response') > 0.5)
-
-levels(pred_NIS_fix_train) <- c('Not Dead', 'Dead')
-confMatrix_train <- table(true = train$DIED, predicted = pred_NIS_fix_train)
-
-confMatrix_train
-
-error_train <- (confMatrix_train[1,2] + confMatrix_train[2,1])/nrow(train)
-round(error_train, 4)
-```
-
-```{r}
-pred_NIS_fix_test <- factor(predict(NIS_glm_fix, newdata = test, type = 'response')> 0.5) #
-
-levels(pred_NIS_fix_test) <- c('Not Dead', 'Dead')
-
-confMatrix_test <- table(true = test$DIED, predicted = pred_NIS_fix_test)
-
-confMatrix_test
-
-error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
-print(paste0('Misclassification Error = ', round(error_test, 4)))
-
-sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 4)
-
-specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 4)
-print(paste0('Sensitivity = ', sensitivity))
-print(paste0('Specificity = ', specificity))
-```
-
-```{r}
-predicted_prob_glm_fix <- predict(NIS_glm_fix, newdata = test)
-
-roc_glm <- roc(test$DIED, predicted_prob_glm_fix, ci = TRUE, of = 'auc')
-
-auc(roc_glm)
-ci(roc_glm)
-
-plot(roc_glm, lwd = 4)
-```
-
-```{r}
-test <- coords(roc_glm, input = 'threshold', best.method = 'youden')
-
-# ROC Curve ggplot form
-tibble(
-  Cutoff = test$threshold,
-  SENS = test$sensitivity,
-  SPEC = test$specificity
-) %>%
-  pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
-  ggplot(aes(x = Cutoff, y = value, color = metric)) +
-  geom_point() + 
-  geom_line()
-
-# Tabular form
-tibble(
-  Cutoff = test$threshold,
-  SENS = test$sensitivity,
-  SPEC = test$specificity,
-  SUM = SENS + SPEC
-)%>%
-  arrange(-SUM, -SENS, -SPEC)%>%
-  head(10)
-
-
-
-roc_empirical <- 
-  ROCit::rocit(score = NIS_glm_fix$fitted.values, class = NIS_glm_fix$y)
-plot(roc_empirical, YIndex = F)
-summary(roc_empirical)
-ROCit::ciAUC(roc_empirical)
-```
-
-
-### LASSO Regression
-
-```{r}
-# NIS_sample = NIS_sample[complete.cases(NIS_sample), ]
-# # 13910 observations with missing values
+# test <- coords(roc_glm, input = 'threshold', best.method = 'youden')
 # 
-# death_tsk = makeClassifTask(id = "Death Occurence", 
-#                                  data = NIS_sample, target = "DIED")
+# # ROC Curve ggplot form
+# tibble(
+#   Cutoff = test$threshold,
+#   SENS = test$sensitivity,
+#   SPEC = test$specificity
+# ) %>%
+#   pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
+#   ggplot(aes(x = Cutoff, y = value, color = metric)) +
+#   geom_point() + 
+#   geom_line()
 # 
-# holdout_desc = makeResampleDesc(method='Holdout', stratify = TRUE)
+# # Tabular form
+# tibble(
+#   Cutoff = test$threshold,
+#   SENS = test$sensitivity,
+#   SPEC = test$specificity,
+#   SUM = SENS + SPEC
+# )%>%
+#   arrange(-SUM, -SENS, -SPEC)%>%
+#   head(10)
 # 
-# hold = makeResampleInstance(holdout_desc, task = death_tsk, split=0.7)
 # 
-# train = hold$train.inds[[1]]
-# test = hold$test.inds[[1]]
 # 
-# lasso_lnr =  makeLearner("classif.cvglmnet", 
-#                               fix.factors.prediction = TRUE,
-#                               predict.type = "prob",
-#                               alpha=1, type.measure='auc')
-# This is logistic regression with the lasso penalty (alpha=1)
+# roc_empirical <- 
+#   ROCit::rocit(score = NIS_glm2$fitted.values, class = NIS_glm2$y)
+# plot(roc_empirical, YIndex = F)
+# summary(roc_empirical)
+# ROCit::ciAUC(roc_empirical)
 ```
 
-```{r}
-# death_lasso = train(learner = lasso_lnr, task = death_tsk, subset=train)
-# 
-# auc_lasso = max(death_lasso$learner.model$cvm)
-# 
-# print(auc_lasso)
-# 
-# lambda.min = death_lasso$learner.model$lambda.min
-# extracts the optimal lambda
+
+```{r, echo=FALSE}
+### !Fixing Logistic Regression Model
+
+# NIS_glm_fix <- glm(DIED ~ . -AWEEKEND - TRAN_OUT - ZIPINC_QRTL, family = 'binomial',
+#                data = train)
+# summary(NIS_glm_fix)
 ```
 
-```{r}
-# lasso_lambda.min_lnr = makeLearner("classif.glmnet", lambda=lambda.min,
-#                               fix.factors.prediction = TRUE,
-#                               predict.type = "prob",
-#                               alpha=1)
-# Creates a new learner where lambda is fixed at the optimal value
-
-# death_lasso_final = train(learner = lasso_lambda.min_lnr, task = death_tsk)
-#Takes a really long time
-# trains the lasso model with the optimal lambda on entire data set (test + train)
+```{r, echo=FALSE}
+#DescTools::Conf(NIS_glm_fix)
 ```
+
+```{r Fixed Train Performance, echo=FALSE}
+# pred_NIS_fix_train <- factor(predict(NIS_glm_fix, newdata = train, type = 'response') > 0.5)
+# 
+# levels(pred_NIS_fix_train) <- c('Not Dead', 'Dead')
+# confMatrix_train <- table(true = train$DIED, predicted = pred_NIS_fix_train)
+# 
+# confMatrix_train
+# 
+# error_train <- (confMatrix_train[1,2] + confMatrix_train[2,1])/nrow(train)
+# round(error_train, 4)
+```
+
+```{r, echo=FALSE}
+# pred_NIS_fix_test <- factor(predict(NIS_glm_fix, newdata = test, type = 'response')> 0.5) #
+# 
+# levels(pred_NIS_fix_test) <- c('Not Dead', 'Dead')
+# 
+# confMatrix_test <- table(true = test$DIED, predicted = pred_NIS_fix_test)
+# 
+# confMatrix_test
+# 
+# error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
+# print(paste0('Misclassification Error = ', round(error_test, 4)))
+# 
+# sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 4)
+# 
+# specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 4)
+# print(paste0('Sensitivity = ', sensitivity))
+# print(paste0('Specificity = ', specificity))
+```
+
+```{r, echo=FALSE}
+# predicted_prob_glm_fix <- predict(NIS_glm_fix, newdata = test)
+# 
+# roc_glm <- roc(test$DIED, predicted_prob_glm_fix, ci = TRUE, of = 'auc')
+# 
+# auc(roc_glm)
+# ci(roc_glm)
+# 
+# plot(roc_glm, lwd = 4)
+```
+
+```{r, echo=FALSE}
+# test <- coords(roc_glm, input = 'threshold', best.method = 'youden')
+# 
+# # ROC Curve ggplot form
+# tibble(
+#   Cutoff = test$threshold,
+#   SENS = test$sensitivity,
+#   SPEC = test$specificity
+# ) %>%
+#   pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
+#   ggplot(aes(x = Cutoff, y = value, color = metric)) +
+#   geom_point() + 
+#   geom_line()
+# 
+# # Tabular form
+# tibble(
+#   Cutoff = test$threshold,
+#   SENS = test$sensitivity,
+#   SPEC = test$specificity,
+#   SUM = SENS + SPEC
+# )%>%
+#   arrange(-SUM, -SENS, -SPEC)%>%
+#   head(10)
+# 
+# 
+# 
+# roc_empirical <- 
+#   ROCit::rocit(score = NIS_glm_fix$fitted.values, class = NIS_glm_fix$y)
+# plot(roc_empirical, YIndex = F)
+# summary(roc_empirical)
+# ROCit::ciAUC(roc_empirical)
+```
+
+# Predicting Death within Hospital Stay
 
 ### New Data NIS_simple with variables relevant to admission
 
-```{r}
+```{r, echo=FALSE}
 NIS_simple <- NIS%>%
   select(c(1, 3:37, 93:97, 103:104, 151:152, 155))
 
@@ -376,10 +318,29 @@ NIS_simple$CM_VALVE <- factor(NIS_simple$CM_VALVE, levels = c(0,1), labels = c('
 NIS_simple$CM_WGHTLOSS <- factor(NIS_simple$CM_WGHTLOSS, levels = c(0,1), labels = c('No', 'Yes'))
 ```
 
-### Basic Logisitic Regression
-```{r}
+```{r Summary Statistics}
+table(Occurence = NIS_simple$DIED, Gender = NIS_simple$FEMALE, useNA = 'ifany')
+
+table(Occurence = NIS_simple$DIED, Elected = NIS_simple$ELECTIVE, useNA = 'ifany')
+
 NIS_simple <- NIS_simple[complete.cases(NIS_simple),]
 
+ggplot(data = NIS_simple, aes(x = DIED, y = AGE, fill = DIED))+
+  geom_boxplot()+
+  labs(title = 'Age and Outcome', x = 'Outcome', y = 'Age', fill = 'Outcome')+
+  theme_bw()
+
+ggplot(data = NIS_simple%>% filter(DIED == 'Died'), aes(x = AGE, fill = DIED))+
+  geom_histogram(bins = 45)+
+  labs(title = 'Death Frequencies by Age', x = 'Age', y = 'Frequency', fill = 'Outcome')+
+  theme_bw()
+
+table(NIS_simple$DIED)
+```
+
+
+### Basic Logisitic Regression
+```{r}
 sm_size <- floor(0.70*nrow(NIS_simple))
 
 set.seed(2019)
@@ -396,7 +357,7 @@ summary(NIS_glm)
 ```
 
 ```{r}
-DescTools::Conf(NIS_glm_fix)
+DescTools::Conf(NIS_glm)
 
 ```
 
@@ -415,8 +376,10 @@ roc_test_glm <- roc(test$DIED, predicted_prob_glm_test, ci = TRUE, of = 'auc')
 auc(roc_test_glm)
 ci(roc_test_glm)
 
-plot(roc_glm, lwd = 1, col = 'blue')
+plot(roc_glm, lwd = 1, col = 'black')
 plot(roc_test_glm, lwd = 1, col = 'red', add = TRUE)
+legend('bottomright', legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1, cex = 0.8)
+
 ```
 
 ```{r}
@@ -470,7 +433,7 @@ table(NIS_simple$DIED[train])
 
 ```{r}
 NIS_rf <- randomForest(DIED ~ ., data = NIS_simple[train, ],
-                       mtry = sqrt(47),
+                       mtry = sqrt(46),
                        ntree = 500,
                        strata = NIS_simple$DIED[train])
 NIS_rf
@@ -503,23 +466,23 @@ legend(0,0.4, legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1:1, c
 ### Balanced Random Forest (Even Better)
 
 ```{r}
-# NIS_tsk <- makeClassifTask(id = "Mortality within hospital",
-#                            data = NIS_simple, target = 'DIED')
-# 
-# split_desc <- makeResampleDesc(method = 'Holdout', stratify = TRUE, split = 0.7)
-# 
-# set.seed(2019)
-# 
-# split <- makeResampleInstance(split_desc, task = NIS_tsk)
-# 
-# train <- split$train.inds[[1]]
-# test <- split$test.inds[[1]]
-# table(NIS_simple$DIED[train])
+NIS_tsk <- makeClassifTask(id = "Mortality within hospital",
+                           data = NIS_simple, target = 'DIED')
+
+split_desc <- makeResampleDesc(method = 'Holdout', stratify = TRUE, split = 0.7)
+
+set.seed(2019)
+
+split <- makeResampleInstance(split_desc, task = NIS_tsk)
+
+train <- split$train.inds[[1]]
+test <- split$test.inds[[1]]
+table(NIS_simple$DIED[train])
 ```
 
 ```{r}
 NIS_brf <- randomForest(DIED ~ ., data = NIS_simple[train, ],
-                       mtry = sqrt(47),
+                       mtry = sqrt(46),
                        ntree = 500,
                        strata = NIS_simple$DIED[train],
                        sampsize = c(2359, 2359))
@@ -547,13 +510,13 @@ ci.auc(roc_test)
 
 plot(roc_train)
 plot(roc_test, col = 'red', add =TRUE)
-legend(0,0.4, legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1:1, cex = 0.8)
+legend(0,0.4, legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1)
 
 ```
 
 ### Boosting
 
-```{r}
+```{r warning=FALSE}
 NIS_boost <- gbm(1*(DIED=='Died') ~ ., data = NIS_simple[train,],
                  distribution = 'bernoulli', n.trees = 8000,
                  interaction.depth = 1,
@@ -596,54 +559,6 @@ plot(roc_train, lwd = 3, cex.lab = 1.2, cex.axis = 1.2)
 plot(roc_test, lwd = 3, col = 'red', add = TRUE)
 legend(x = 'bottomright', legend = c('Train', 'Test'), lwd = 3, col = c('black', 'red'), cex = 1.2)
 ```
-
-
-#*****#
-```{r}
-NIS_test <- NIS_simple%>%
-  filter(DIED == 'Not Dead')
-
-sel <- sample(nrow(NIS_test), 3371)
-NIS_non <- NIS_test[sel,]
-
-NIS_dead <- NIS_simple%>%
-  filter(DIED == 'Died')
-
-NIS_smpsize <- rbind(NIS_non, NIS_dead)
-
-table(NIS_smpsize$DIED)
-```
-
-```{r}
-NIS_tsk <- makeClassifTask(id = "Mortality within hospital",
-                           data = NIS_smpsize, target = 'DIED')
-
-split_desc <- makeResampleDesc(method = 'Holdout', stratify = TRUE, split = 0.7)
-
-set.seed(2019)
-
-split <- makeResampleInstance(split_desc, task = NIS_tsk)
-
-train <- split$train.inds[[1]]
-test <- split$test.inds[[1]]
-table(NIS_smpsize$DIED[train])
-```
-
-```{r}
-NIS_boost <- gbm(1*(DIED=='Died') ~ ., data = NIS_smpsize[train,],
-                 distribution = 'bernoulli', n.trees = 5000,
-                 interaction.depth = 1,
-                 shrinkage = 0.001,
-                 cv.folds = 10, class.stratify.cv = TRUE)
-NIS_boost
-```
-
-```{r}
-n.trees_opt <- gbm.perf(NIS_boost, plot.it = FALSE)
-head(summary(NIS_boost, plotit = FALSE, n.trees = n.trees_opt), 10)
-```
-
-
 
 
 
