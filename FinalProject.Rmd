@@ -16,8 +16,8 @@ library(ggplot2)
 library(randomForest)
 library(tidyverse)
 library(gbm)
+library(cowplot)
 ```
-
 
 ```{r echo=FALSE}
 NIS <- read.csv('NIS2012-200K.csv')
@@ -55,232 +55,14 @@ NIS$AWEEKEND <- factor(NIS$AWEEKEND, levels = c(0, 1), labels = c('Weekdays', 'W
 NIS$AMONTH <- factor(NIS$AMONTH, levels = c(1:12), labels = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'))
 ```
 
-```{r echo=FALSE}
-# NIS_sample <- NIS%>%
-#   select(AGE, AWEEKEND, AMONTH, APRDRG, APRDRG_Risk_Mortality, APRDRG_Severity,
-#          ELECTIVE, FEMALE, LOS, ORPROC, PAY1, RACE, TRAN_OUT, TRAN_IN, ZIPINC_QRTL, DIED)
-# #AGE_NEONATE
-# 
-# NIS_sample$AGE <- as.numeric(NIS_sample$AGE)
-# NIS_sample$LOS <- as.numeric(NIS_sample$LOS)
-```
 
-```{r Summary Statistics, echo=FALSE}
-# table(Occurence = NIS_sample$DIED, Gender = NIS_sample$FEMALE, useNA = 'ifany')
-# 
-# table(Occurence = NIS_sample$DIED, Elected = NIS_sample$ELECTIVE, useNA = 'ifany')
-# 
-# NIS_sample <- NIS_sample[complete.cases(NIS_sample),]
-# 
-# ggplot(data = NIS_sample, aes(x = DIED, y = AGE, fill = DIED))+
-#   geom_boxplot()+
-#   labs(title = 'Age and Outcome', x = 'Outcome', y = 'Age', fill = 'Outcome')+
-#   theme_bw()
-# 
-# ggplot(data = NIS_sample%>% filter(DIED == 'Died'), aes(x = AGE, fill = DIED))+
-#   geom_histogram(bins = 45)+
-#   labs(title = 'Death Frequencies by Age', x = 'Age', y = 'Frequency', fill = 'Outcome')+
-#   theme_bw()
-# 
-# table(NIS_sample$DIED)
-```
+# Introduction
 
-## !Elementary Logisitc Regression (REFERENCE)
+Death has always been a major fear for many and is the natural course of life. In our society we have always associated death with hospitals as it shown in popular movies like Disney’s Up. With ongoing advancements in medical science and technology a person’s life expectancy has risen compared to centuries ago. 
+However, there are the unfortunate cases of deaths within a hospital stay and all these records have been recorded by the National Impatient Sample (NIS) and its data collected by the Healthcare Cost and Utilization Project (HCUP).  Hospitals themselves should not be looked on as the causation of death when a patient is admitted, as the NIS has a wealth of information of each inbound patient with records of their drug use `ARPDRG_Severity`, length of stay (`LOS`), `RACE`, `AGE`, `HODP_DIVISION`, if the patient was transferred in (`TRAN_IN`), and operating procedure to name a few. With this vast dataset statisticians and hospitals can use these variables of interests to predict death for another inbound patient, to gauge a metric of how likely the patient is to die during their hospital stay with their incoming conditions and their personal demographics of age, race, and gender. Predicting this particular outcome of death will help to improve the efficiency of hospitals and to better improve the quality of life for those admitted into the hospital, as nurses and doctors will be able to provide the proper attention and care for those who are likely to die from their current conditions in the prediction model. 
+The (NIS data) [https://www.hcup-us.ahrq.gov/] can be found using the link and this project will be looking into a subsample of 200,000 of all hospital patients in 2012. Generally looking at the death outcome across the ages of the patients, we see the total distribution in the box and whisker plot with death occurrences at the minimum age, the three quartile ranges, and the maximum values with plotted outliers. The occurrence of death is common for patients that are much older in age towards 60 years and above, but we still have occurrences amongst those that are relatively young although not very many and are marked as outliers. In the next plot we see the frequency of death occurrence amongst all the ages and can see the quadratic trend as age increases so does death occurrences. Which is natural in a hospital environment as sickness and symptoms affect those elderly and with much weaker immune systems. However, we also see the spike for those prenatal and infants as there can be numerous complications with childbirth.
 
-```{r, echo=FALSE}
-# sm_size <- floor(0.70*nrow(NIS_sample))
-# 
-# set.seed(2019)
-# train_ind <- sample(seq_len(nrow(NIS_sample)), size = sm_size)
-# 
-# train <- NIS_sample[train_ind, ]
-# test <- NIS_sample[-train_ind, ]
-```
-
-```{r, echo=FALSE}
-# NIS_glm <- glm(DIED ~ ., family = 'binomial', data = train)
-# summary(NIS_glm)
-```
-
-```{r, echo=FALSE}
-#DescTools::Conf(NIS_glm)
-```
-
-```{r Train Performance, echo=FALSE}
-# pred_NIS_train <- factor(predict(NIS_glm, newdata = train, type = 'response') > 0.5)
-# 
-# levels(pred_NIS_train) <- c('Not Dead', 'Dead')
-# confMatrix_train <- table(true = train$DIED, predicted = pred_NIS_train)
-# 
-# confMatrix_train
-# 
-# error_train <- (confMatrix_train[1,2] + confMatrix_train[2,1])/nrow(train)
-# round(error_train, 4)
-```
-
-```{r, echo=FALSE}
-# NIS_glm2 <- glm(DIED ~ ., family = 'binomial', data = test)
-# DescTools::Conf(NIS_glm2)
-```
-
-```{r, echo=FALSE}
-# pred_NIS_test <- factor(predict(NIS_glm2, newdata = test, type = 'response')> 0.5) #
-# 
-# levels(pred_NIS_test) <- c('Not Dead', 'Dead')
-# 
-# confMatrix_test <- table(true = test$DIED, predicted = pred_NIS_test)
-# 
-# confMatrix_test
-# 
-# error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
-# print(paste0('Misclassification Error = ', round(error_test, 4)))
-# 
-# sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 4)
-# 
-# specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 4)
-# print(paste0('Sensitivity = ', sensitivity))
-# print(paste0('Specificity = ', specificity))
-```
-
-```{r, echo=FALSE}
-# predicted_prob_glm <- predict(NIS_glm, newdata = test)
-# 
-# roc_glm <- roc(test$DIED, predicted_prob_glm, ci = TRUE, of = 'auc')
-# 
-# auc(roc_glm)
-# ci(roc_glm)
-# 
-# plot(roc_glm, lwd = 4)
-```
-
-```{r, echo=FALSE}
-######## Cutoff point test ########
-
-# test <- coords(roc_glm, input = 'threshold', best.method = 'youden')
-# 
-# # ROC Curve ggplot form
-# tibble(
-#   Cutoff = test$threshold,
-#   SENS = test$sensitivity,
-#   SPEC = test$specificity
-# ) %>%
-#   pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
-#   ggplot(aes(x = Cutoff, y = value, color = metric)) +
-#   geom_point() + 
-#   geom_line()
-# 
-# # Tabular form
-# tibble(
-#   Cutoff = test$threshold,
-#   SENS = test$sensitivity,
-#   SPEC = test$specificity,
-#   SUM = SENS + SPEC
-# )%>%
-#   arrange(-SUM, -SENS, -SPEC)%>%
-#   head(10)
-# 
-# 
-# 
-# roc_empirical <- 
-#   ROCit::rocit(score = NIS_glm2$fitted.values, class = NIS_glm2$y)
-# plot(roc_empirical, YIndex = F)
-# summary(roc_empirical)
-# ROCit::ciAUC(roc_empirical)
-```
-
-
-```{r, echo=FALSE}
-### !Fixing Logistic Regression Model
-
-# NIS_glm_fix <- glm(DIED ~ . -AWEEKEND - TRAN_OUT - ZIPINC_QRTL, family = 'binomial',
-#                data = train)
-# summary(NIS_glm_fix)
-```
-
-```{r, echo=FALSE}
-#DescTools::Conf(NIS_glm_fix)
-```
-
-```{r Fixed Train Performance, echo=FALSE}
-# pred_NIS_fix_train <- factor(predict(NIS_glm_fix, newdata = train, type = 'response') > 0.5)
-# 
-# levels(pred_NIS_fix_train) <- c('Not Dead', 'Dead')
-# confMatrix_train <- table(true = train$DIED, predicted = pred_NIS_fix_train)
-# 
-# confMatrix_train
-# 
-# error_train <- (confMatrix_train[1,2] + confMatrix_train[2,1])/nrow(train)
-# round(error_train, 4)
-```
-
-```{r, echo=FALSE}
-# pred_NIS_fix_test <- factor(predict(NIS_glm_fix, newdata = test, type = 'response')> 0.5) #
-# 
-# levels(pred_NIS_fix_test) <- c('Not Dead', 'Dead')
-# 
-# confMatrix_test <- table(true = test$DIED, predicted = pred_NIS_fix_test)
-# 
-# confMatrix_test
-# 
-# error_test <- (confMatrix_test[1,2] + confMatrix_test[2,1])/nrow(test)
-# print(paste0('Misclassification Error = ', round(error_test, 4)))
-# 
-# sensitivity <- round(confMatrix_test[2,2] / (confMatrix_test[2,1] + confMatrix_test[2,2]), 4)
-# 
-# specificity <- round(confMatrix_test[1,1] / (confMatrix_test[1,1] + confMatrix_test[1,2]), 4)
-# print(paste0('Sensitivity = ', sensitivity))
-# print(paste0('Specificity = ', specificity))
-```
-
-```{r, echo=FALSE}
-# predicted_prob_glm_fix <- predict(NIS_glm_fix, newdata = test)
-# 
-# roc_glm <- roc(test$DIED, predicted_prob_glm_fix, ci = TRUE, of = 'auc')
-# 
-# auc(roc_glm)
-# ci(roc_glm)
-# 
-# plot(roc_glm, lwd = 4)
-```
-
-```{r, echo=FALSE}
-# test <- coords(roc_glm, input = 'threshold', best.method = 'youden')
-# 
-# # ROC Curve ggplot form
-# tibble(
-#   Cutoff = test$threshold,
-#   SENS = test$sensitivity,
-#   SPEC = test$specificity
-# ) %>%
-#   pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
-#   ggplot(aes(x = Cutoff, y = value, color = metric)) +
-#   geom_point() + 
-#   geom_line()
-# 
-# # Tabular form
-# tibble(
-#   Cutoff = test$threshold,
-#   SENS = test$sensitivity,
-#   SPEC = test$specificity,
-#   SUM = SENS + SPEC
-# )%>%
-#   arrange(-SUM, -SENS, -SPEC)%>%
-#   head(10)
-# 
-# 
-# 
-# roc_empirical <- 
-#   ROCit::rocit(score = NIS_glm_fix$fitted.values, class = NIS_glm_fix$y)
-# plot(roc_empirical, YIndex = F)
-# summary(roc_empirical)
-# ROCit::ciAUC(roc_empirical)
-```
-
-# Predicting Death within Hospital Stay
-
-### New Data NIS_simple with variables relevant to admission
-
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 NIS_simple <- NIS%>%
   select(c(1, 3:37, 93:97, 103:104, 151:152, 155))
 
@@ -318,29 +100,41 @@ NIS_simple$CM_VALVE <- factor(NIS_simple$CM_VALVE, levels = c(0,1), labels = c('
 NIS_simple$CM_WGHTLOSS <- factor(NIS_simple$CM_WGHTLOSS, levels = c(0,1), labels = c('No', 'Yes'))
 ```
 
-```{r Summary Statistics}
-table(Occurence = NIS_simple$DIED, Gender = NIS_simple$FEMALE, useNA = 'ifany')
-
-table(Occurence = NIS_simple$DIED, Elected = NIS_simple$ELECTIVE, useNA = 'ifany')
+```{r Summary Statistics, echo=FALSE}
+# table(Occurence = NIS_simple$DIED, Gender = NIS_simple$FEMALE, useNA = 'ifany')
+# 
+# table(Occurence = NIS_simple$DIED, Elected = NIS_simple$ELECTIVE, useNA = 'ifany')
 
 NIS_simple <- NIS_simple[complete.cases(NIS_simple),]
 
-ggplot(data = NIS_simple, aes(x = DIED, y = AGE, fill = DIED))+
+p1 <- ggplot(data = NIS_simple, aes(x = DIED, y = AGE, fill = DIED))+
   geom_boxplot()+
   labs(title = 'Age and Outcome', x = 'Outcome', y = 'Age', fill = 'Outcome')+
   theme_bw()
 
-ggplot(data = NIS_simple%>% filter(DIED == 'Died'), aes(x = AGE, fill = DIED))+
+p2 <- ggplot(data = NIS_simple%>% filter(DIED == 'Died'), aes(x = AGE, fill = DIED))+
   geom_histogram(bins = 45)+
   labs(title = 'Death Frequencies by Age', x = 'Age', y = 'Frequency', fill = 'Outcome')+
   theme_bw()
 
-table(NIS_simple$DIED)
+plot_grid(p1, p2, labels = c('A', 'B'), nrow = 2)
+#table(NIS_simple$DIED)
 ```
 
+# Methods
+
+The sampled NIS dataset is a real-world dataset that is not preprocessed and there are a few missing observations that would conflict with our prediction models such as random forests and boosting models. There are a total of 13,904 observations missing and some with our main outcome of interest `Death`, we delete these missing observations and are left with 186,096 observations for our prediction models. Out dataset has 157 variables recorded for each patient and running our prediction model for a patient’s death we use selected variables of what the hospitals would have records of at the time of admission. The primary interest of our prediction model is to predict the death of an admitted patient and some variables may be recorded during their stay at the hospital and those observations would not help our model to predict death for an entirely new patient with different records before reaching the hospital. Therefore, we selected variables such as  their demographics like `age`, `gender`, `race`, and what month they were admitted `amonth`, if it was the weekend or not `aweekend`, their drug severity `APRDRG_Severity`, their current health conditions if they have `CM_AIDS`, are alcholics `CM_Alcohol`, have churned lung `CM_CHRNLUNG`, are obese `CM_OBESE`, if they elected to go to the hospital themselves `ELECTIVE`, if they had an operation procedure `ORPROC`, their method paying their hospital bill `PAY1`, and if they were transferred in from a different medical facility `TRAN_IN` to name a short few.
+
+I have used three different types of predictive models each with progressive performance. The first I have used was elementary logistic regression learned from basic statistics classes with a categorical outcome of whether the patient died or not and fitting all our parameters of interests with our main outcome of death to find the log likelihood of death occurring. We fit all the parameters of interest because these are readily available for each inbound patient and will give our model predictive accuracy. Then using machine learning techniques such as random forests to decorrelate trees that have positive correlated samples, to reduce variance. Since our prediction model is a classification problem of those that died and did not we consider a random subset of $\sqrt(46)$ of all our possible variables of interest. Our final prediction model is boosting as a general-purpose algorithm to improve the prediction of base learners like decision trees. Boosting sequentially improves the prediction by fitting a model to the residuals, updating the model by adding to the residuals and continues this process until the limit of iterations is met or the prediction model reaches the smallest cross-validation error.
+
+Using machine learning techniques to split our subset of the NIS data with our selected features, we use 70% for the training set (N = 130266) and 30% for the testing set (N = 55830). This gives us a substantial amount to train our prediction models on the training set. Then to make our test prediction of the predictive model on the test set. Which we then compare the performance of our three predictive model’s sensitivity, specificity, accuracy, and misclassification error rate. We use accuracy as a performance metric to describe how often our model is accurate in classifying a death outcome correctly, $\text{Accuracy} = \frac{\text{(True Positive + True Negative)}}{\text{Total}}$. Misclassification error rate is the opposite of accuracy and describes how often the model is wrong in classifying our outcome of interest death, $\text{Misclassification} = \frac{\text{(False Positive + False Negative)}}{\text{Total}}$. In predicting deaths for a patient, we would want the most accurate model in predicting death with the lowest misclassification error rate, this information would help the hospital and could have the potential to save a life. Sensitivity is another performance metric when our actual outcome is death (the positive case), how often does it actually predict the death and is given by the formula $\text{Sensitivity} = \frac{\text{True Positive}}{\text{Actual Yes}}$. Specificity tells us when the reality is not a death, and how often does the model predict a negative case (did not die), and is given by $\text{Specificity} = \frac{\text{True Negative}}{\text{Actual No}}$.
+
+# Results
+
+In running our basic logistic regression to classify the positive case of a death occurrence we achieve a training accuracy of 0.9820, which performs well in classifying a death outcome. However, our base model has a sensitivity rate of 0.0770 and a specificity rate of 0.9988, which can be referenced on the table output below. 
 
 ### Basic Logisitic Regression
-```{r}
+```{r, echo=FALSE}
 sm_size <- floor(0.70*nrow(NIS_simple))
 
 set.seed(2019)
@@ -350,39 +144,42 @@ train <- NIS_simple[train_ind, ]
 test <- NIS_simple[-train_ind, ]
 ```
 
-```{r}
+```{r, echo=FALSE}
 # For NIS_simple data
 NIS_glm <- glm(DIED ~ ., family = 'binomial', data = train)
-summary(NIS_glm)
+#summary(NIS_glm)
 ```
 
-```{r}
+```{r, echo=FALSE}
 DescTools::Conf(NIS_glm)
 
 ```
 
-```{r}
+With such a low sensitivity rate this does not help for our predictive model to correctly identify a patient that would die. I ran a cutoff point analysis that would indicate which optimal cutoff point would give us the greatest sensitivity rate and specificity rate, as each model would have a tradeoff between both rates. Referencing from the cutoff plot, we are given the entire distribution of sensitivity rates and specificity rates, the optimal cutoff point would be where the two measures of performance would intersect and would be -3.9749, giving us a sensitivity rate of 0.9136 and a specificity rate of 0.8553. Our training and test datasets with their respective `AUC` values of 0.9438 and 0.9486 gives us great model predictive performance.
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 predicted_prob_glm <- predict(NIS_glm, newdata = train)
 
 roc_glm <- roc(train$DIED, predicted_prob_glm, ci = TRUE, of = 'auc')
 
-auc(roc_glm)
-ci(roc_glm)
+# auc(roc_glm)
+# ci(roc_glm)
 
 
 predicted_prob_glm_test <- predict(NIS_glm, newdata = test)
 roc_test_glm <- roc(test$DIED, predicted_prob_glm_test, ci = TRUE, of = 'auc')
 
-auc(roc_test_glm)
-ci(roc_test_glm)
+# auc(roc_test_glm)
+# ci(roc_test_glm)
 
-plot(roc_glm, lwd = 1, col = 'black')
+plot(roc_glm, lwd = 1, col = 'black', main = 'Basic Logistic Regression ROC')
 plot(roc_test_glm, lwd = 1, col = 'red', add = TRUE)
-legend('bottomright', legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1, cex = 0.8)
-
+legend('bottomright', legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1)
+text(0, 0.4, paste('Train AUC:', round(auc(roc_glm), 4), sep = ' '))
+text(0,0.3, paste('Test AUC:', round(auc(roc_test_glm), 4), sep = ' '))
 ```
 
-```{r}
+```{r, echo=FALSE}
 test <- coords(roc_test_glm, input = 'threshold', best.method = 'youden')
 
 # ROC Curve ggplot form
@@ -394,7 +191,8 @@ tibble(
   pivot_longer(., cols = c("SENS", "SPEC"), values_to = "value", names_to = "metric") %>%
   ggplot(aes(x = Cutoff, y = value, color = metric)) +
   geom_point() + 
-  geom_line()
+  geom_line()+
+  ggtitle('Logistic Regression Cutoff Point')
 
 # Tabular form
 tibble(
@@ -410,13 +208,15 @@ tibble(
 
 roc_empirical <- 
   ROCit::rocit(score = NIS_glm$fitted.values, class = NIS_glm$y)
-plot(roc_empirical, YIndex = F)
-summary(roc_empirical)
-ROCit::ciAUC(roc_empirical)
+# plot(roc_empirical, YIndex = F)
+# summary(roc_empirical)
+#ROCit::ciAUC(roc_empirical)
 ```
 
-### Random Forest (consultation)
-```{r}
+Further improving our predictive model, we use more advanced models in machine learning such as random forests. After splitting our subsampled data of the NIS for our selected features of interest, we have a training set with 127907 patients classified as `Not Dead` and 2359 have `Died`. In using the `randomForest` package, our confusion matrix for the Random Forest model gives us a misclassification error for those that did not die compared to those that did die, a value of 0.0006 and 0.8711, respectively. Since the Random Forest model is classifying to the majority being those that did not die, our outcome of interest those that did die is relatively low. 
+
+### Random Forest
+```{r, echo=FALSE}
 NIS_tsk <- makeClassifTask(id = "Mortality within hospital",
                            data = NIS_simple, target = 'DIED')
 
@@ -428,138 +228,154 @@ split <- makeResampleInstance(split_desc, task = NIS_tsk)
 
 train <- split$train.inds[[1]]
 test <- split$test.inds[[1]]
-table(NIS_simple$DIED[train])
+#table(NIS_simple$DIED[train])
 ```
 
-```{r}
+```{r, echo=FALSE}
 NIS_rf <- randomForest(DIED ~ ., data = NIS_simple[train, ],
                        mtry = sqrt(46),
                        ntree = 500,
                        strata = NIS_simple$DIED[train])
-NIS_rf
+NIS_rf$confusion
 ```
 
-```{r}
+Our Random Forest variable importance output referenced below lists length of stay (`LOS`), admission month (`AMONTH`), their risk of mortality (`APRDRG_Risk_Mortality`), drug usage (`APRDRG`), and `AGE` as the top five features with the most importance to our model. The Receiver Operating Characteristic (ROC) curve output shows the entire performance of our model’s sensitivity and specificity rates. Even with good predictive performance of our training and test datasets with `AUC` values of 0.9441 and 0.9489 respectively, which performs better than our basic logistic regression model. Our Random Forest model would not be the ideal predictive model for deaths within hospital as it overclassifies to the majority class being our negative case of those that did not die. 
+
+```{r, echo=FALSE}
 varImpPlot(NIS_rf, cex = 0.7, pt.cex = 1.2, n.var = 20, pch = 16,
-           main = 'Variable Importance')
+           main = 'Random Forest Variable Importance')
 ```
 
-```{r warning=FALSE, message=FALSE}
+```{r warning=FALSE, message=FALSE, echo=FALSE}
 roc_train <- roc(NIS_simple$DIED[train], NIS_rf$votes[,1])
 
 NIS_predict_test <- predict(NIS_rf, newdata = NIS_simple[test,],
                             type = 'prob')
-head(NIS_predict_test, 4)
+#head(NIS_predict_test, 4)
 
 roc_test <- roc(NIS_simple$DIED[test], NIS_predict_test[,1])
 
-auc(roc_train)
-ci.auc(roc_train)
-auc(roc_test)
-ci.auc(roc_test)
+# auc(roc_train)
+# ci.auc(roc_train)
+# auc(roc_test)
+# ci.auc(roc_test)
 
-plot(roc_train)
+plot(roc_train, main = 'Random Forest ROC')
 plot(roc_test, col = 'red', add =TRUE)
-legend(0,0.4, legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1:1, cex = 0.8)
+legend('bottomright', legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1)
+text(0, 0.4, paste('Train AUC:', round(auc(roc_train), 4), sep = ' '))
+text(0,0.3, paste('Test AUC:', round(auc(roc_test), 4), sep = ' '))
 ```
 
-### Balanced Random Forest (Even Better)
+We then alternatively turn to a Balanced Random Forest prediction model, using the same training and test sets but with sampling the negative case to match the same sample size as the positive cases of the death outcome. We see a significant improvement in the misclassification error rates from the confusion matrix output below, that those who are not dead have a misclassification error of 0.1193 and for those that have died with a value of 0.1242. 
 
-```{r}
-NIS_tsk <- makeClassifTask(id = "Mortality within hospital",
-                           data = NIS_simple, target = 'DIED')
+### Balanced Random Forest
 
-split_desc <- makeResampleDesc(method = 'Holdout', stratify = TRUE, split = 0.7)
-
-set.seed(2019)
-
-split <- makeResampleInstance(split_desc, task = NIS_tsk)
-
-train <- split$train.inds[[1]]
-test <- split$test.inds[[1]]
+```{r, echo=FALSE, include=FALSE}
+# NIS_tsk <- makeClassifTask(id = "Mortality within hospital",
+#                            data = NIS_simple, target = 'DIED')
+# 
+# split_desc <- makeResampleDesc(method = 'Holdout', stratify = TRUE, split = 0.7)
+# 
+# set.seed(2019)
+# 
+# split <- makeResampleInstance(split_desc, task = NIS_tsk)
+# 
+# train <- split$train.inds[[1]]
+# test <- split$test.inds[[1]]
 table(NIS_simple$DIED[train])
 ```
 
-```{r}
+```{r, echo=FALSE}
 NIS_brf <- randomForest(DIED ~ ., data = NIS_simple[train, ],
                        mtry = sqrt(46),
                        ntree = 500,
                        strata = NIS_simple$DIED[train],
                        sampsize = c(2359, 2359))
-NIS_brf
+NIS_brf$confusion
 ```
 
-```{r}
+In balancing the majority class to the same sample size as our outcome of interest our Balanced Random Forest variable importance changes with the top five variables being `ARPDRG_Risk_Mortality`, `ARPDRG_Severity`, `AGE`, `APRDRG`, and `AMONTH`. However, for our Balanced Random Forest model the ROC curve output has a training and testing `AUC` values of 0.9502 and 0.9521 respectively which is another significant improvement of predictive model performance compared to the basic logistic regression and unbalanced Random Forest models.
+
+```{r, echo=FALSE}
 varImpPlot(NIS_brf, cex = 0.7, pt.cex = 1.2, n.var = 20, pch = 16,
-           main = 'Variable Importance')
+           main = 'Balanced Random Forest Variable Importance')
 ```
 
-```{r warning=FALSE, message=FALSE}
+```{r warning=FALSE, message=FALSE, echo=FALSE}
 roc_train <- roc(NIS_simple$DIED[train], NIS_brf$votes[,1])
 
 NIS_predict_test <- predict(NIS_brf, newdata = NIS_simple[test,],
                             type = 'prob')
-head(NIS_predict_test, 4)
+#head(NIS_predict_test, 4)
 
 roc_test <- roc(NIS_simple$DIED[test], NIS_predict_test[,1])
 
-auc(roc_train)
-ci.auc(roc_train)
-auc(roc_test)
-ci.auc(roc_test)
+# auc(roc_train)
+# ci.auc(roc_train)
+# auc(roc_test)
+# ci.auc(roc_test)
 
-plot(roc_train)
+plot(roc_train, main = 'Balanced Random Forest ROC')
 plot(roc_test, col = 'red', add =TRUE)
-legend(0,0.4, legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1)
-
+legend('bottomright', legend = c('Train', 'Test'), col = c('black', 'red'), lty = 1)
+text(0, 0.4, paste('Train AUC:', round(auc(roc_train), 4), sep = ' '))
+text(0,0.3, paste('Test AUC:', round(auc(roc_test), 4), sep = ' '))
 ```
+
+Lastly, we try another sophisticated machine learning predictive model with Boosting, with model parameters of a shrinkage rate that learns faster, but at a greedily pace with $\lambda$ = 0.01 with interaction depth 1 and 10-fold cross-validation methods. In predicting such a lengthy dataset, a greater $\lambda$ value would be less computationally expensive. Our optimal number of trees is at a value of 3,000 which we use for our predictions to generate the ROC curves. The cross-validation plot presents the training error and cross validation error against `LOSS`, the logistic loss function instead of using residual sum of squares as the metric of measure. In our Boosting predictive model, we have another change in variable importance with the top five being `ARPDRG_Risk_Mortality`, `ARPDRG_Severity`, `LOS`, `ARPDRG`, and `AGE`. The ROC curve for our Boosting prediction model has training and test `AUC` values of 0.9493 and 0.9507, respectively.
 
 ### Boosting
 
-```{r warning=FALSE}
+```{r warning=FALSE, message=FALSE, echo=FALSE}
 NIS_boost <- gbm(1*(DIED=='Died') ~ ., data = NIS_simple[train,],
-                 distribution = 'bernoulli', n.trees = 8000,
+                 distribution = 'bernoulli', n.trees = 3000,
                  interaction.depth = 1,
                  shrinkage = 0.01,
                  cv.folds = 10, class.stratify.cv = TRUE)
 NIS_boost
 ```
 
-```{r}
+```{r echo=FALSE}
 n.trees_opt <- gbm.perf(NIS_boost, plot.it = FALSE)
 head(summary(NIS_boost, plotit = FALSE, n.trees = n.trees_opt), 10)
 ```
 
-```{r}
-p1 <- plot(NIS_boost, i.var = c('APRDRG_Risk_Mortality'), n.trees = n.trees_opt, type = 'response', return.grid = TRUE)
+```{r, echo=FALSE}
+# p1 <- plot(NIS_boost, i.var = c('APRDRG_Risk_Mortality'), n.trees = n.trees_opt, type = 'response', return.grid = TRUE)
 
 # plot(p1, lwd = 3, col = 'red', cex.axis = 1.2, cex.lab = 1.2)
 # plot(NIS_boost, i.var = c('APRDRG_Risk_Mortality', 'APRDRG_Severity'), n.trees = n.trees_opt, type = 'response')
-plot(NIS_boost$train.error, cex.lab = 1.2, cex.axis = 1.2, col = 'red', type = 'l', lwd = 3, ylab = 'Loss', xlab = 'iteration')
+plot(NIS_boost$train.error, cex.lab = 1.2, cex.axis = 1.2, col = 'red', type = 'l', lwd = 3, ylab = 'Loss', xlab = 'Iteration')
 lines(NIS_boost$cv.error, lwd = 3)
 legend(x = 'topright', legend = c('Training', 'CV'), col = c('red', 'black'), lty = 1)
 ```
 
-```{r}
+```{r warning=FALSE, message=FALSE, echo=FALSE}
 NIS_boost_predict <- predict(NIS_boost,
                              newdata = NIS_simple[test,],
                              type = 'response', n.trees = n.trees_opt)
-head(NIS_boost_predict)
+# head(NIS_boost_predict)
 
 roc_train <- roc(NIS_simple$DIED[train], predict(NIS_boost, n.trees = n.trees_opt))
 roc_test <- roc(NIS_simple$DIED[test], NIS_boost_predict)
 
-auc(roc_train)
-ci.auc(roc_train)
+# auc(roc_train)
+# ci.auc(roc_train)
+# 
+# auc(roc_test)
+# ci.auc(roc_test)
 
-auc(roc_test)
-ci.auc(roc_test)
-
-plot(roc_train, lwd = 3, cex.lab = 1.2, cex.axis = 1.2)
-plot(roc_test, lwd = 3, col = 'red', add = TRUE)
-legend(x = 'bottomright', legend = c('Train', 'Test'), lwd = 3, col = c('black', 'red'), cex = 1.2)
+plot(roc_train, lwd = 1, cex.lab = 1.2, cex.axis = 1.2, main = 'Boosting ROC')
+plot(roc_test, lwd = 1, col = 'red', add = TRUE)
+legend(x = 'bottomright', legend = c('Train', 'Test'), lwd = 1, col = c('black', 'red'))
+text(0, 0.4, paste('Train AUC:', round(auc(roc_train), 4), sep = ' '))
+text(0,0.3, paste('Test AUC:', round(auc(roc_test), 4), sep = ' '))
 ```
 
+# Discussion
+
+Our prediction models have achieved high sufficient accuracy with training and test AUC values that are close to one another and agree with each other. I would not use the unbalanced Random Forest as our prediction model to predict impatient mortality as we have seen that deaths within the hospital are not as common and are not the majority class. With selecting our available features for a patient’s admission to a hospital I was surprised to see that variables such as `ORPROC` whether a patient had a major operating room procedure, `HOSP_DIVISION` the census division of the hospital divided into 9 groups amongst the United States, and `TRAN_IN` whether a patient was transferred from a different acute care hospital, or another type of health facility, or even not transferred at all did not show as often or have a high variable importance in our prediction models. Before making our models, I preselected these  particular features because of how influential they could potentially be for a patient and their inbound mortality within a hospital stay. For example, the categorical variable of major operating procedure `ORPROC`, if a patient were to have open heart surgery, brain surgery, or even a heart transplant depending on the current condition and severity of the patient they would be more likely to die during the operation. Even with `HOSP_DIVISION` as some regions within the States could have hospitals not as accessible to all in different parts as hospitals are located in the urban and suburban environments compared to rural and patients may have the difficulty in reaching the hospital for their conditions with adequate time and even hospitals in divisions where snow and weather conditions could prohibit the patient’s admission to reaching and getting inside the hospital to receive the proper care in time. `TRAN_IN` if a patient were to be transferred to a better equipped hospital for a certain procedure or a medical doctor’s lifesaving expertise, for a patient to be even transferred would mean their condition is in severity and the transfer could have had an impact of their likelihood to die within admission. Further considerations for better prediction models would be to consider interaction effects as we may see a significant effect of `OPRPROC` and `TRAN_IN` as a combined effect of the potential of mortality for a patient to be transferred for a major operating procedure.
 
 
 
